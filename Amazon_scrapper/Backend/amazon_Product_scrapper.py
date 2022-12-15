@@ -3,15 +3,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from amazonsqllite import store_db
-from sql_connection import  get_sql_connection
+from sql_connection import get_sql_connection
 from amazondao import insert_new_products
 
-
 next_page = ''
-connections=''
+connections = get_sql_connection()
+
 
 def scrape_amazon(keyword, max_pages):
-
     page_number = 1
     path = "C:/Users/Ansh/Desktop/Akshay/Python/Pycharm/Pycharm projects/chromedriver"
     url = "https://www.amazon.in/"
@@ -44,21 +43,20 @@ def scrape_page(browser):
     product_ratings = []
     product_ratings_num = []
     product_link = []
-    # items = browser.find_elements(By.XPATH, value = '//div[contains(@class, "s-result-item s-asin")]')
-    items = util.WebDriverWait(browser,10).until(EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@class, "s-result-item s-asin")]')))
-    #Xpath= //*[@id="search"]/div[1]/div[1]/div/span[1]/div[1]/div[3] //div[@class=""]
-    print(len(items))
 
-    for item in items :
-        link =''
-        name =''
-        ratings_box =[]
-        name = item.find_element(by=By.XPATH,value='//span[@class="a-size-medium a-color-base a-text-normal"]')
+    items = util.WebDriverWait(browser, 10).until(
+        EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@class, "s-result-item s-asin")]')))
+
+    for item in items:
+        link = ''
+        name = ''
+        ratings_box = []
+        name = item.find_element(by=By.XPATH, value='//span[@class="a-size-medium a-color-base a-text-normal"]')
         product_name.append(name.text)
         data_asin = item.get_attribute("data-asin")
         product_asin.append(data_asin)
-        ratings_box = item.find_elements(By.XPATH,value= './/div[@class ="a-row a-size-small"]/span')
-        if ratings_box != []:
+        ratings_box = item.find_elements(By.XPATH, value='.//div[@class ="a-row a-size-small"]/span')
+        if ratings_box:
             ratings = ratings_box[0].get_attribute('aria-label')
             ratings_num = ratings_box[1].get_attribute('aria-label')
         else:
@@ -67,17 +65,15 @@ def scrape_page(browser):
         product_ratings_num.append(str(ratings_num))
 
         # find price
-        whole_price = item.find_elements(By.XPATH, value = './/span[@class="a-price-whole"]')
-        # fraction_price = item.find_elements(By.XPATH, value ='.//span[@class="a-price-fraction"]')
-        # print(fraction_price)
-        if whole_price != [] :
+        whole_price = item.find_elements(By.XPATH, value='.//span[@class="a-price-whole"]')
+        if whole_price:
             price = whole_price[0].text
         else:
             price = 0
         product_price.append(price)
 
         # find link
-        link = item.find_element(By.XPATH, value='//a[@class="a-link-normal a-text-normal"]').get_attribute("href")
+        link = item.find_element(By.XPATH, value='.//span[@class="rush-component"]/a').get_attribute("href")
         product_link.append(link)
         product_dic = {
             "product_name": name.text,
@@ -87,9 +83,8 @@ def scrape_page(browser):
             "product_link": link,
             "product_price": price
         }
-        global  connections
-        connections = get_sql_connection()
-        insert_new_products(connections,product_dic)
+        # mysql database
+        insert_new_products(connections, product_dic)
     print(product_name)
     print(product_asin)
     print(product_ratings)
@@ -97,10 +92,13 @@ def scrape_page(browser):
     print(product_link)
     print(product_price)
 
+    # Sqlite database
     store_db(product_asin, product_name, product_price, product_ratings, product_ratings_num, product_link)
     global next_page
-    next_page = browser.find_element(by=By.XPATH,value='//span[@class ="s-pagination-item s-pagination-selected"]/following-sibling::a').get_attribute("href")
+    next_page = browser.find_element(by=By.XPATH,
+                                     value='//span[@class ="s-pagination-item s-pagination-selected"]/following-sibling::a').get_attribute(
+        "href")
     print(next_page)
 
 
-scrape_amazon("Monitor",4)
+scrape_amazon("Monitor", 4)
